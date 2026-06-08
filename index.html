@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Creas — Dashboard Seguimiento Proyectos</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f3; color: #1a1a1a; min-height: 100vh; }
+.header { background: #fff; border-bottom: 1px solid #e8e8e5; padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+.logo { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.logo span { color: #5a7a3a; }
+.header-title { font-size: 12px; color: #aaa; margin-left: 12px; }
+.header-left { display: flex; align-items: center; }
+.header-right { display: flex; align-items: center; gap: 10px; }
+.last-update { font-size: 11px; color: #bbb; }
+.refresh-btn { font-size: 12px; padding: 6px 14px; border-radius: 6px; border: 1px solid #ddd; background: #fff; color: #444; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.refresh-btn:hover { background: #f5f5f3; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: #5a7a3a; display: inline-block; }
+.dot.loading { background: #e8a020; animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.3} }
+.main { padding: 22px 28px; max-width: 1200px; margin: 0 auto; }
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+.metric { background: #fff; border: 1px solid #e8e8e5; border-radius: 10px; padding: 14px 16px; }
+.metric-label { font-size: 11px; color: #999; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
+.metric-value { font-size: 26px; font-weight: 600; line-height: 1; }
+.metric-sub { font-size: 11px; color: #bbb; margin-top: 3px; }
+.panels { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+.panel { background: #fff; border: 1px solid #e8e8e5; border-radius: 10px; padding: 16px 18px; }
+.panel-title { font-size: 13px; font-weight: 500; margin-bottom: 12px; }
+.carga-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.carga-name { font-size: 12px; font-weight: 600; color: #555; width: 24px; }
+.carga-track { flex: 1; background: #f0f0ee; border-radius: 4px; height: 11px; overflow: hidden; }
+.carga-fill { height: 100%; border-radius: 4px; }
+.carga-num { font-size: 11px; color: #555; width: 20px; text-align: right; font-weight: 500; }
+.carga-avg { font-size: 10px; color: #bbb; width: 38px; text-align: right; }
+.chart-wrap { position: relative; width: 100%; height: 165px; }
+.panel-full { background: #fff; border: 1px solid #e8e8e5; border-radius: 10px; padding: 16px 18px; margin-bottom: 14px; }
+.filter-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.filter-btn { font-size: 11px; padding: 4px 11px; border-radius: 20px; border: 1px solid #ddd; background: #fff; color: #666; cursor: pointer; }
+.filter-btn.active { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
+.proj-section { margin-bottom: 4px; }
+.proj-section-header { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: #aaa; padding: 10px 0 6px; border-bottom: 1px solid #f0f0ee; margin-bottom: 2px; display: flex; align-items: center; gap: 6px; }
+.sect-pill { display: inline-block; font-size: 9px; font-weight: 600; padding: 1px 7px; border-radius: 3px; letter-spacing: 0.04em; }
+table { width: 100%; border-collapse: collapse; }
+th { font-size: 11px; color: #aaa; font-weight: 500; padding: 0 8px 8px 0; text-align: left; border-bottom: 1px solid #f0f0ee; }
+td { font-size: 12px; padding: 7px 8px 7px 0; border-bottom: 1px solid #f8f8f7; vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+.col-n { width: 22%; font-weight: 500; }
+.col-e { width: 15%; }
+.col-d { width: 43%; color: #888; font-size: 11px; line-height: 1.4; }
+.col-t { width: 20%; }
+.badge { display: inline-block; font-size: 10px; font-weight: 500; padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
+.b-im { background: #dbeafe; color: #1e40af; }
+.b-teaser { background: #ede9fe; color: #5b21b6; }
+.b-pre { background: #f3f4f6; color: #374151; }
+.b-dd { background: #fee2e2; color: #991b1b; }
+.b-seg { background: #fce7f3; color: #9d174d; }
+.b-other { background: #f9fafb; color: #6b7280; }
+.tdot { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; font-size: 8px; font-weight: 700; margin-right: 2px; }
+.heat-table th, .heat-table td { text-align: center; }
+.heat-table td:first-child { text-align: left; font-weight: 600; }
+.h0 { color: #ccc; }
+.h1 { color: #3b6d11; font-weight: 500; }
+.h2 { color: #92400e; font-weight: 500; }
+.h3 { color: #991b1b; font-weight: 600; }
+.loading-overlay { display: flex; align-items: center; justify-content: center; min-height: 300px; flex-direction: column; gap: 12px; color: #aaa; font-size: 13px; }
+.spinner { width: 24px; height: 24px; border: 2px solid #e8e8e5; border-top-color: #5a7a3a; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.auth-box { background: #fff; border: 1px solid #e8e8e5; border-radius: 10px; padding: 36px; text-align: center; max-width: 420px; margin: 60px auto; }
+.auth-box h2 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+.auth-box p { font-size: 13px; color: #888; margin-bottom: 22px; line-height: 1.6; }
+.auth-btn { display: inline-block; background: #0078d4; color: #fff; font-size: 13px; font-weight: 500; padding: 10px 24px; border-radius: 6px; border: none; cursor: pointer; }
+.auth-btn:hover { background: #106ebe; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo">Creas <span>●</span></div>
+    <div class="header-title">Dashboard · Seguimiento de proyectos</div>
+  </div>
+  <div class="header-right">
+    <span class="last-update" id="last-update">—</span>
+    <button class="refresh-btn" onclick="loadData()">
+      <span class="dot" id="status-dot"></span> Actualizar
+    </button>
+  </div>
+</div>
+
+<div class="main" id="main-content">
+  <div class="loading-overlay"><div class="spinner"></div><span>Cargando...</span></div>
+</div>
+
+<script>
+const DRIVE_ID = 'b!UuIMk9bqMU6Pc4GVekEIN_vIOsN4CsVPlHusnUaQs6eM4IQX_B-FQoLLBOhdKOj0';
+const ITEM_ID  = '01DBISMGAQLCLNCHDDNZAIPTUPWMZ2OXWJ';
+const CLIENT_ID = 'YOUR_AZURE_APP_CLIENT_ID';
+const TENANT_ID = 'creasimpacto.onmicrosoft.com';
+const SCOPE = 'https://graph.microsoft.com/Files.Read.All';
+const REDIRECT_URI = window.location.href.split('?')[0].split('#')[0];
+
+let accessToken = null;
+let evoChart = null;
+let currentCat = 'Todos';
+let selectedMember = null;
+let _allProjects = [];
+
+// ── Auth ──────────────────────────────────────────────────────────────────
+function getTokenFromHash() {
+  const params = new URLSearchParams(window.location.hash.substring(1));
+  const t = params.get('access_token');
+  if (t) { accessToken = t; window.history.replaceState({}, '', window.location.pathname); return true; }
+  return false;
+}
+function login() {
+  window.location.href = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/authorize`
+    + `?client_id=${CLIENT_ID}&response_type=token`
+    + `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`
+    + `&scope=${encodeURIComponent(SCOPE)}&response_mode=fragment`;
+}
+
+// ── Graph fetch ───────────────────────────────────────────────────────────
+async function fetchSheetData() {
+  const wsRes = await fetch(
+    `https://graph.microsoft.com/v1.0/drives/${DRIVE_ID}/items/${ITEM_ID}/workbook/worksheets`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!wsRes.ok) throw new Error('Graph ' + wsRes.status);
+  const ws = await wsRes.json();
+  const sheet = (ws.value.find(s => /balance|carga/i.test(s.name)) || ws.value[0]).name;
+  const rRes = await fetch(
+    `https://graph.microsoft.com/v1.0/drives/${DRIVE_ID}/items/${ITEM_ID}/workbook/worksheets('${encodeURIComponent(sheet)}')/usedRange`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+  if (!rRes.ok) throw new Error('Range ' + rRes.status);
+  return (await rRes.json()).values;
+}
+
+// ── Parse ─────────────────────────────────────────────────────────────────
+function parseData(rows) {
+  // Hardcoded from verified Excel read — overridden live when Graph works
+  return STATIC_DATA;
+}
+
+// ── Render ────────────────────────────────────────────────────────────────
+const teamColors = { LV:'#2563eb',OM:'#059669',LG:'#7c3aed',CL:'#dc2626',HS:'#d97706',IH:'#e11d48',CV:'#16a34a' };
+const barColors  = ['#2563eb','#059669','#7c3aed','#dc2626','#d97706','#e11d48','#16a34a'];
+
+function badgeClass(e) {
+  return {IM:'b-im',Teaser:'b-teaser','Pre-Teaser':'b-pre','Due Diligence':'b-dd',Seguimiento:'b-seg'}[e] || 'b-other';
+}
+
+// Section display config
+const SECT_CONFIG = {
+  'Empoderar':    { color:'#dbeafe', text:'#1e40af', parent:'Inversión' },
+  'Cuidar':       { color:'#fce7f3', text:'#9d174d', parent:'Inversión' },
+  'Regenerar':    { color:'#d1fae5', text:'#065f46', parent:'Inversión' },
+  'Cartera':      { color:'#fef3c7', text:'#92400e', parent:'Cartera' },
+  'Originación':  { color:'#f3f4f6', text:'#374151', parent:'Transversal' },
+  'Com. & Eventos':{ color:'#f3f4f6', text:'#374151', parent:'Transversal' },
+  'Impacto':      { color:'#f3f4f6', text:'#374151', parent:'Transversal' },
+  'People':       { color:'#f3f4f6', text:'#374151', parent:'Transversal' },
+  'Interno':      { color:'#f3f4f6', text:'#374151', parent:'Transversal' },
+  'Growth Gestora':{ color:'#f3f4f6', text:'#374151', parent:'Transversal' },
+  'Rel. Inversores':{ color:'#f3f4f6', text:'#374151', parent:'Transversal' },
+};
+
+function renderDashboard(data) {
+  const { projects, cargaRows, weeklyTotal, weekLabels } = data;
+  _allProjects = projects;
+  const maxC = Math.max(...cargaRows.map(r => r.weeks[0]), 1);
+  const total = cargaRows.reduce((a,b) => a + b.weeks[0], 0);
+  const maxP = cargaRows.reduce((a,b) => b.weeks[0]>a.weeks[0]?b:a, cargaRows[0]);
+  const avg3 = Math.round(cargaRows.reduce((a,b) => a+b.avg3, 0) / cargaRows.length);
+
+  document.getElementById('main-content').innerHTML = `
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">Proyectos activos</div><div class="metric-value">${projects.length}</div><div class="metric-sub">en todas las categorías</div></div>
+      <div class="metric"><div class="metric-label">Carga total equipo</div><div class="metric-value">${total}</div><div class="metric-sub">semana actual</div></div>
+      <div class="metric"><div class="metric-label">Más cargado</div><div class="metric-value">${maxP.name}</div><div class="metric-sub">${maxP.weeks[0]} pts esta semana</div></div>
+      <div class="metric"><div class="metric-label">Promedio equipo 3s</div><div class="metric-value">${avg3}</div><div class="metric-sub">por colaborador</div></div>
+    </div>
+
+    <div class="panels">
+      <div class="panel">
+        <div class="panel-title">Carga semanal por colaborador</div>
+        ${cargaRows.map((d,i) => `
+          <div class="carga-row">
+            <span class="carga-name">${d.name}</span>
+            <div class="carga-track"><div class="carga-fill" style="width:${Math.round(d.weeks[0]/maxC*100)}%;background:${barColors[i]};"></div></div>
+            <span class="carga-num">${d.weeks[0]}</span>
+            <span class="carga-avg">avg ${d.avg3}</span>
+          </div>`).join('')}
+      </div>
+      <div class="panel">
+        <div class="panel-title">Evolución carga total equipo</div>
+        <div class="chart-wrap"><canvas id="evoChart" role="img" aria-label="Carga total del equipo por semana"></canvas></div>
+      </div>
+    </div>
+
+    <div class="panel-full">
+      <div class="panel-title">Proyectos activos</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
+        <div class="filter-row" id="cat-filters">
+          ${['Todos','Inversión','Cartera','Transversal'].map(c =>
+            `<button class="filter-btn${currentCat===c?' active':''}" onclick="setCat('${c}')">${c}</button>`
+          ).join('')}
+        </div>
+        <div class="filter-row" id="member-filters">
+          <span style="font-size:11px;color:#bbb;line-height:26px;margin-right:2px;">Persona</span>
+          ${['LV','OM','LG','CL','HS','IH','CV'].map(m =>
+            `<button class="filter-btn member-btn" data-member="${m}" onclick="toggleMember('${m}')" style="display:flex;align-items:center;gap:5px;">
+              <span style="width:8px;height:8px;border-radius:50%;background:${teamColors[m]};display:inline-block;"></span>${m}
+            </button>`
+          ).join('')}
+        </div>
+      </div>
+      <div id="proj-list"></div>
+    </div>
+
+    <div class="panel-full">
+      <div class="panel-title">Carga detallada por semana</div>
+      <table class="heat-table">
+        <thead><tr>
+          <th style="text-align:left">Colaborador</th>
+          ${weekLabels.slice(0,8).map(l=>`<th>${l}</th>`).join('')}
+          <th>Avg 3s</th><th>Avg 9s</th>
+        </tr></thead>
+        <tbody>${cargaRows.map(d=>`<tr>
+          <td>${d.name}</td>
+          ${d.weeks.slice(0,8).map(v=>`<td class="${v===0?'h0':v<=6?'h1':v<=12?'h2':'h3'}">${v}</td>`).join('')}
+          <td style="font-weight:600">${d.avg3}</td>
+          <td style="color:#aaa">${d.avg9}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>`;
+
+  if (evoChart) evoChart.destroy();
+  evoChart = new Chart(document.getElementById('evoChart'), {
+    type: 'line',
+    data: { labels: weekLabels, datasets: [{ label:'Carga total', data: weeklyTotal,
+      borderColor:'#5a7a3a', backgroundColor:'rgba(90,122,58,0.08)',
+      fill:true, tension:0.3, pointRadius:4, pointBackgroundColor:'#5a7a3a' }] },
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:false } },
+      scales:{ y:{ beginAtZero:true, grid:{ color:'rgba(0,0,0,0.05)' }, ticks:{ font:{size:11} } },
+               x:{ grid:{ display:false }, ticks:{ font:{size:11} } } } }
+  });
+
+  renderProjects();
+}
+
+function renderProjects() {
+  const catMap = { 'Inversión':['Empoderar','Cuidar','Regenerar'], 'Cartera':['Cartera'],
+    'Transversal':['Originación','Com. & Eventos','Impacto','People','Interno','Growth Gestora','Rel. Inversores'] };
+
+  const sectionsToShow = currentCat === 'Todos'
+    ? Object.values(catMap).flat()
+    : catMap[currentCat] || [];
+
+  let html = '';
+  let totalShown = 0;
+  for (const sect of sectionsToShow) {
+    let projs = _allProjects.filter(p => p.section === sect);
+    if (selectedMember) projs = projs.filter(p => p.equipo.includes(selectedMember));
+    if (!projs.length) continue;
+    totalShown += projs.length;
+    const cfg = SECT_CONFIG[sect] || { color:'#f3f4f6', text:'#374151' };
+    html += `<div class="proj-section">
+      <div class="proj-section-header">
+        <span class="sect-pill" style="background:${cfg.color};color:${cfg.text}">${sect}</span>
+        <span style="color:#ccc">${projs.length} proyecto${projs.length>1?'s':''}</span>
+      </div>
+      <table><tbody>
+        ${projs.map(p => `<tr>
+          <td class="col-n">${p.name}</td>
+          <td class="col-e"><span class="badge ${badgeClass(p.etapa)}">${p.etapa}</span></td>
+          <td class="col-d">${p.desc.length>70?p.desc.slice(0,70)+'…':p.desc}</td>
+          <td class="col-t">${p.equipo.map(m=>{
+            const active = !selectedMember || m===selectedMember;
+            return `<span class="tdot" style="background:${active?teamColors[m]+'22':'#f0f0ee'};color:${active?teamColors[m]:'#ccc'};${m===selectedMember?'outline:2px solid '+teamColors[m]+';outline-offset:1px;':''}">${m}</span>`;
+          }).join('')}</td>
+        </tr>`).join('')}
+      </tbody></table>
+    </div>`;
+  }
+  if (!totalShown) html = `<div style="padding:24px 0;text-align:center;color:#bbb;font-size:13px;">Sin proyectos para este filtro</div>`;
+  document.getElementById('proj-list').innerHTML = html;
+}
+
+window.setCat = function(cat) {
+  currentCat = cat;
+  document.querySelectorAll('#cat-filters .filter-btn').forEach(b => b.classList.toggle('active', b.textContent.trim()===cat));
+  renderProjects();
+};
+
+window.toggleMember = function(m) {
+  selectedMember = selectedMember === m ? null : m;
+  document.querySelectorAll('.member-btn').forEach(b => {
+    const active = b.dataset.member === selectedMember;
+    b.classList.toggle('active', active);
+    if (active) b.style.borderColor = teamColors[m];
+    else b.style.borderColor = '';
+  });
+  renderProjects();
+};
+
+// ── Load ──────────────────────────────────────────────────────────────────
+async function loadData() {
+  document.getElementById('status-dot').className = 'dot loading';
+  if (!accessToken) { showAuth(); return; }
+  try {
+    const rows = await fetchSheetData();
+    const data = parseLiveData(rows);
+    renderDashboard(data);
+    document.getElementById('last-update').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+  } catch(e) {
+    if (/401|403/.test(e.message)) { accessToken=null; showAuth(); }
+    else { renderDashboard(STATIC_DATA); document.getElementById('last-update').textContent = 'Error Graph · datos locales'; }
+  }
+  document.getElementById('status-dot').className = 'dot';
+}
+
+function showAuth() {
+  document.getElementById('main-content').innerHTML = `
+    <div class="auth-box">
+      <h2>Acceso con cuenta Creas</h2>
+      <p>El dashboard lee el Excel en tiempo real desde SharePoint. Inicia sesión con tu cuenta de Microsoft para continuar.</p>
+      <button class="auth-btn" onclick="login()">Iniciar sesión con Microsoft</button>
+    </div>`;
+  document.getElementById('status-dot').className = 'dot';
+}
+
+// ── Live parser (Graph data) ───────────────────────────────────────────────
+function parseLiveData(rows) {
+  // Section markers in order as they appear in Excel
+  const SECT_MAP = [
+    { marker:'Empoderar',           section:'Empoderar' },
+    { marker:'Cuidar',              section:'Cuidar' },
+    { marker:'Regenerar',           section:'Regenerar' },
+    { marker:'CARTERA',             section:'Cartera' },
+    { marker:'ORIGINACIÓN',         section:'Originación' },
+    { marker:'COMUNICACIÓN',        section:'Com. & Eventos' },
+    { marker:'IMPACTO',             section:'Impacto' },
+    { marker:'PEOPLE',              section:'People' },
+    { marker:'INTERNO',             section:'Interno' },
+    { marker:'GROWTH',              section:'Growth Gestora' },
+    { marker:'RELACIÓN',            section:'Rel. Inversores' },
+  ];
+  const colMap = { 5:'LV',6:'OM',7:'LG',8:'CL',9:'HS',10:'IH',11:'CV' };
+  let currentSection = '';
+  const projects = [];
+  let headerFound = false;
+
+  for (const row of rows) {
+    const r0 = String(row[0]||'').trim();
+    if (!headerFound && r0 === 'Proyecto') { headerFound = true; continue; }
+    if (!headerFound) continue;
+    const sect = SECT_MAP.find(s => r0.startsWith(s.marker));
+    if (sect) { currentSection = sect.section; continue; }
+    if (String(row[2]||'') === 'Activo' && row[3]) {
+      const equipo = [];
+      for (const [ci,name] of Object.entries(colMap)) if (row[ci] && row[ci]!=0) equipo.push(name);
+      projects.push({ name:r0, desc:String(row[1]||''), estado:'Activo', etapa:String(row[3]), section:currentSection, equipo });
+    }
+  }
+
+  // Parse carga
+  let cargaRows = [], weeklyTotal = [], weekLabels = [];
+  for (let i=0; i<rows.length; i++) {
+    const r = rows[i];
+    if (String(r[3]||'').includes('Semana') || (r[3]&&!isNaN(r[3])&&Number(r[3])>46000)) {
+      const wl = [];
+      for (let j=3;j<Math.min(r.length,12);j++) if(r[j]&&!isNaN(r[j])&&Number(r[j])>0) wl.push(Number(r[j]));
+      if (wl.length>=3) {
+        weekLabels = wl.map((_,idx)=>`S${idx+1}`);
+        const collabs = ['LV','OM','LG','CL','HS','IH','CV'];
+        for (let k=i+1;k<=i+9&&k<rows.length;k++) {
+          const cr=rows[k], nm=String(cr[2]||cr[1]||'').trim();
+          if (collabs.includes(nm)) {
+            const w=[]; for(let j=3;j<3+wl.length;j++) w.push(Number(cr[j])||0);
+            const a3=w.slice(0,3).reduce((a,b)=>a+b,0)/3;
+            const a9=w.reduce((a,b)=>a+b,0)/w.length;
+            cargaRows.push({name:nm,weeks:w,avg3:Math.round(a3),avg9:parseFloat(a9.toFixed(1))});
+          }
+          if (String(cr[2]||cr[1]||'').toLowerCase().includes('total')) {
+            for(let j=3;j<3+wl.length;j++) weeklyTotal.push(Number(cr[j])||0);
+          }
+        }
+        break;
+      }
+    }
+  }
+  if (!cargaRows.length) return STATIC_DATA;
+  return { projects: projects.length ? projects : STATIC_DATA.projects, cargaRows, weeklyTotal, weekLabels };
+}
+
+// ── Static data (verified from Excel) ────────────────────────────────────
+const STATIC_DATA = {
+  projects: [
+    // Empoderar
+    { name:'CIP', desc:'Proveedor de formación profesional subvencionada en Canarias', etapa:'IM', section:'Empoderar', equipo:['LV','CL','IH'] },
+    { name:'La Factoría', desc:'Gestor de vivienda pública', etapa:'IM', section:'Empoderar', equipo:['OM','LG','IH'] },
+    { name:'Robotix', desc:'Distribuidor de hardware y software a colegios para robótica y programación', etapa:'IM', section:'Empoderar', equipo:['LV','HS','CV'] },
+    // Cuidar
+    { name:'Ailin Health', desc:'Infraestructura para la detección precoz de enfermedades crónicas', etapa:'Pre-Teaser', section:'Cuidar', equipo:['OM','LG','CV'] },
+    { name:'Remolonas', desc:'Plataforma que conecta al agricultor con el consumidor final', etapa:'Pre-Teaser', section:'Cuidar', equipo:['CL','IH','CV'] },
+    { name:'Lura Care', desc:'Proveedor de servicios de odontología a aquellos que no tienen acceso', etapa:'Teaser', section:'Cuidar', equipo:['LG','CV'] },
+    { name:'Marsi Bionics', desc:'Neuro-rehabilitación para niños y adolescentes', etapa:'Pre-Teaser', section:'Cuidar', equipo:['OM','LG','IH'] },
+    { name:'Les Opticiens Mobiles', desc:'Proveedor de servicios de óptica a aquellos que no tienen acceso', etapa:'Pre-Teaser', section:'Cuidar', equipo:['LG','HS'] },
+    // Regenerar
+    { name:'Joinup (NEW)', desc:'Plataforma de movilidad sostenible corporativa', etapa:'Pre-Teaser', section:'Regenerar', equipo:['HS'] },
+    { name:'Widhoc', desc:'Sensores agrícolas para optimizar el riego en cultivos', etapa:'Pre-Teaser', section:'Regenerar', equipo:['CL','IH'] },
+    { name:'Waterchallenge', desc:'Tecnología ASEC para tratar fluidos industriales contaminados', etapa:'Pre-Teaser', section:'Regenerar', equipo:['LV','CL','CV'] },
+    { name:'Agerpix', desc:'Sensores agrícolas para optimizar producción', etapa:'Pre-Teaser', section:'Regenerar', equipo:['LG','IH'] },
+    { name:'Solfy', desc:'Fotovoltaico residencial', etapa:'Pre-Teaser', section:'Regenerar', equipo:['LV','CV'] },
+    // Cartera
+    { name:'Ironhack', desc:'Seguimiento quincenal del proceso de M&A y de la situación de caja', etapa:'Seguimiento', section:'Cartera', equipo:['LV','HS'] },
+    { name:'Mitiga', desc:'Búsqueda de coinversores que ayuden a mejorar la posición del ticket de Creas', etapa:'Extraordinario', section:'Cartera', equipo:['OM','HS'] },
+    { name:'Senior Market', desc:'En proceso de levantar una ronda interna liderada por Creas', etapa:'Follow-on', section:'Cartera', equipo:['LG'] },
+    { name:'Goal Systems', desc:'Terminando el Plan de Impacto con la nueva herramienta desarrollada', etapa:'Seguimiento', section:'Cartera', equipo:['LV','HS'] },
+    { name:'Lillian Care', desc:'Seguimiento activo', etapa:'Seguimiento', section:'Cartera', equipo:['LV','LG','IH'] },
+    // Originación
+    { name:'Network M&A / Fondos', desc:'Contactos M&A y fondos (BDO, EY, Arcano, Alantra, PwC…)', etapa:'Planificación', section:'Originación', equipo:['OM','LG'] },
+    { name:'Monitoring Baker Tilly', desc:'Dealflow y contactos traídos por Baker Tilly (healthcare)', etapa:'Planificación', section:'Originación', equipo:['LG'] },
+    { name:'Monitoring Avangard', desc:'Dealflow y contactos traídos por Avanguard (alimentación)', etapa:'Planificación', section:'Originación', equipo:['IH'] },
+    { name:'Calendario eventos 2026', desc:'Recopilación y monitoring de eventos', etapa:'Planificación', section:'Originación', equipo:['CV'] },
+    { name:'Análisis sectoriales', desc:'Salud mental', etapa:'En curso', section:'Originación', equipo:['IH'] },
+    // Com. & Eventos
+    { name:'Proyecto página web', desc:'Desarrollo de la nueva página web de Creas', etapa:'En curso', section:'Com. & Eventos', equipo:['CV'] },
+    { name:'Newsletter', desc:'Desarrollo de la newsletter de Creas', etapa:'En curso', section:'Com. & Eventos', equipo:['CV'] },
+    // Impacto
+    { name:'Auditoría Miresi & Zen Educate', desc:'Auditoría de impacto', etapa:'En curso', section:'Impacto', equipo:['CL','IH'] },
+    { name:'Informe de impacto', desc:'Construcción del informe 2025', etapa:'En curso', section:'Impacto', equipo:['HS','IH','CV'] },
+    { name:'Impacto sistémico', desc:'Construcción de la visión sistémica', etapa:'En curso', section:'Impacto', equipo:['IH'] },
+    // People
+    { name:'Nuevas contrataciones (Dafna/Caroline)', desc:'Onboarding de Dafna', etapa:'En curso', section:'People', equipo:['LG','HS','IH','CV'] },
+    // Interno
+    { name:'Revisión regulatoria / Compliance', desc:'', etapa:'En curso', section:'Interno', equipo:['OM'] },
+    // Growth Gestora
+    { name:'Fondo Educación (Bankinter)', desc:'Reunión con Bankinter para presentar el fondo de educación', etapa:'Planificación', section:'Growth Gestora', equipo:['LV','HS','CV'] },
+    // Rel. Inversores
+    { name:'NextGen (17/09)', desc:'Enviar emails al listado de invitados', etapa:'Planificación', section:'Rel. Inversores', equipo:['LV','OM','CV'] },
+  ],
+  cargaRows: [
+    { name:'LV', weeks:[11,11,8,2,2,2,2,2,0], avg3:10, avg9:5 },
+    { name:'OM', weeks:[10,10,4,3,3,3,3,3,0], avg3:8,  avg9:4 },
+    { name:'LG', weeks:[15,13,4,2,2,2,2,2,0], avg3:11, avg9:5 },
+    { name:'CL', weeks:[7,7,6,2,2,0,0,0,0],   avg3:7,  avg9:3 },
+    { name:'HS', weeks:[11,11,9,6,4,4,4,4,0], avg3:10, avg9:6 },
+    { name:'IH', weeks:[18,18,11,7,5,1,1,1,0],avg3:16, avg9:7 },
+    { name:'CV', weeks:[16,16,9,4,2,2,2,2,0], avg3:14, avg9:6 },
+  ],
+  weeklyTotal: [88,86,51,26,20,14,14,14,0],
+  weekLabels:  ['S1','S2','S3','S4','S5','S6','S7','S8','S9'],
+};
+
+// ── Init ──────────────────────────────────────────────────────────────────
+if (getTokenFromHash()) {
+  loadData();
+} else if (CLIENT_ID === 'YOUR_AZURE_APP_CLIENT_ID') {
+  _allProjects = STATIC_DATA.projects;
+  renderDashboard(STATIC_DATA);
+  document.getElementById('last-update').textContent = 'Modo demo · datos del Excel';
+  document.getElementById('status-dot').className = 'dot';
+} else {
+  loadData();
+}
+</script>
+</body>
+</html>
