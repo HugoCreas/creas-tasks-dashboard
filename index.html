@@ -337,7 +337,9 @@ async function loadData() {
   if (!accessToken) { showAuth(); return; }
   try {
     const rows = await fetchSheetData();
+    console.log('[DIAG] filas recibidas de Graph:', rows.length, rows);
     const data = parseLiveData(rows);
+    console.log('[DIAG] cargaRows:', data.cargaRows.length, 'weeklyTotal:', data.weeklyTotal, 'weekLabels:', data.weekLabels);
     renderDashboard(data);
     document.getElementById('last-update').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
   } catch(e) {
@@ -373,49 +375,76 @@ function parseLiveData(rows) {
     { marker:'GROWTH',              section:'Growth Gestora' },
     { marker:'RELACIÓN',            section:'Rel. Inversores' },
   ];
-  const colMap = { 5:'LV',6:'OM',7:'LG',8:'CL',9:'HS',10:'IH',11:'CV',12:'FS' };
   let currentSection = '';
   const projects = [];
   let headerFound = false;
+  let col = null; // offsets reales detectados desde la fila de cabecera
 
   for (const row of rows) {
-    const r0 = String(row[0]||'').trim();
-    if (!headerFound && r0 === 'Proyecto') { headerFound = true; continue; }
-    if (!headerFound) continue;
+    // Detectar fila de cabecera y mapear columnas por su nombre
+    if (!headerFound) {
+      const hi = row.findIndex(c => String(c||'').trim() === 'Proyecto');
+      if (hi !== -1) {
+        const find = label => row.findIndex(c => String(c||'').trim() === label);
+        col = {
+          name: hi,
+          desc: find('Descripción / Tarea'),
+          estado: find('Estado'),
+          etapa: find('Etapa actual'),
+          team: { LV:find('LV'),OM:find('OM'),LG:find('LG'),CL:find('CL'),HS:find('HS'),IH:find('IH'),CV:find('CV'),FS:find('FS') }
+        };
+        headerFound = true;
+      }
+      continue;
+    }
+    const r0 = String(row[col.name]||'').trim();
     const sect = SECT_MAP.find(s => r0.startsWith(s.marker));
     if (sect) { currentSection = sect.section; continue; }
-    if (String(row[2]||'') === 'Activo' && row[3]) {
+    if (String(row[col.estado]||'') === 'Activo' && row[col.etapa]) {
       const equipo = [];
-      for (const [ci,name] of Object.entries(colMap)) if (row[ci] && row[ci]!=0) equipo.push(name);
-      projects.push({ name:r0, desc:String(row[1]||''), estado:'Activo', etapa:String(row[3]), section:currentSection, equipo });
+      for (const [name,ci] of Object.entries(col.team)) if (ci!==-1 && row[ci] && row[ci]!=0) equipo.push(name);
+      let desc = String(row[col.desc]||'').trim();
+      if (desc === 'n.a.') desc = '';
+      projects.push({ name:r0, desc, estado:'Activo', etapa:String(row[col.etapa]), section:currentSection, equipo });
     }
   }
 
-  // Parse carga
+  // Parse carga — busca las filas de colaboradores directamente (robusto ante
+  // fechas que Graph puede devolver como texto en lugar de número serie)
   let cargaRows = [], weeklyTotal = [], weekLabels = [];
-  for (let i=0; i<rows.length; i++) {
-    const r = rows[i];
-    if (String(r[3]||'').includes('Semana') || (r[3]&&!isNaN(r[3])&&Number(r[3])>46000)) {
-      const wl = [];
-      for (let j=3;j<Math.min(r.length,12);j++) if(r[j]&&!isNaN(r[j])&&Number(r[j])>0) wl.push(Number(r[j]));
-      if (wl.length>=3) {
-        weekLabels = wl.map((_,idx)=>`S${idx+1}`);
-        const collabs = ['LV','OM','LG','CL','HS','IH','CV','FS'];
-        for (let k=i+1;k<=i+9&&k<rows.length;k++) {
-          const cr=rows[k], nm=String(cr[2]||cr[1]||'').trim();
-          if (collabs.includes(nm)) {
-            const w=[]; for(let j=3;j<3+wl.length;j++) w.push(Number(cr[j])||0);
-            const a3=w.slice(0,3).reduce((a,b)=>a+b,0)/3;
-            const a9=w.reduce((a,b)=>a+b,0)/w.length;
-            cargaRows.push({name:nm,weeks:w,avg3:Math.round(a3),avg9:parseFloat(a9.toFixed(1))});
-          }
-          if (String(cr[2]||cr[1]||'').toLowerCase().includes('total')) {
-            for(let j=3;j<3+wl.length;j++) weeklyTotal.push(Number(cr[j])||0);
-          }
-        }
-        break;
-      }
+  const collabs = ['LV','OM','LG','CL','HS','IH','CV','FS'];
+  // El nombre del colaborador puede estar en col 1, 2 o 3 según el offset del rango
+  const nameOf = r => {
+    for (const idx of [3,2,1,0]) {
+      const v = String(r[idx]||'').trim();
+      if (collabs.includes(v) || v.toLowerCase().includes('total')) return { v, idx };
     }
+    return { v:'', idx:-1 };
+  };
+  for (let i=0; i<rows.length; i++) {
+    const { v:nm, idx:nameIdx } = nameOf(rows[i]);
+    if (!collabs.includes(nm)) continue;
+    // Las 9 columnas de semanas empiezan justo después de la columna del nombre
+    const start = nameIdx + 1;
+    const w = [];
+    for (let j=start; j<start+9; j++) w.push(Number(rows[i][j])||0);
+    const a3 = w.slice(0,3).reduce((a,b)=>a+b,0)/3;
+    const a9 = w.reduce((a,b)=>a+b,0)/w.length;
+    cargaRows.push({ name:nm, weeks:w, avg3:Math.round(a3), avg9:parseFloat(a9.toFixed(1)) });
+  }
+  // Fila Total equipo
+  for (const r of rows) {
+    const { v, idx } = nameOf(r);
+    if (v.toLowerCase().includes('total')) {
+      const start = idx + 1;
+      for (let j=start; j<start+9; j++) weeklyTotal.push(Number(r[j])||0);
+      break;
+    }
+  }
+  weekLabels = (cargaRows[0]?.weeks || []).map((_,idx)=>`S${idx+1}`);
+  // Si no se detectó la fila Total, sumar las cargas de los colaboradores
+  if (!weeklyTotal.length && cargaRows.length) {
+    weeklyTotal = cargaRows[0].weeks.map((_,j)=>cargaRows.reduce((a,r)=>a+(r.weeks[j]||0),0));
   }
   if (!cargaRows.length) return STATIC_DATA;
   return { projects: projects.length ? projects : STATIC_DATA.projects, cargaRows, weeklyTotal, weekLabels };
