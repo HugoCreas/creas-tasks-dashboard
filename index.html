@@ -148,8 +148,8 @@ function parseData(rows) {
 }
 
 // ── Render ────────────────────────────────────────────────────────────────
-const teamColors = { LV:'#2563eb',OM:'#059669',LG:'#7c3aed',CL:'#dc2626',HS:'#d97706',IH:'#e11d48',CV:'#16a34a' };
-const barColors  = ['#2563eb','#059669','#7c3aed','#dc2626','#d97706','#e11d48','#16a34a'];
+const teamColors = { LV:'#2563eb',OM:'#059669',LG:'#7c3aed',CL:'#dc2626',HS:'#d97706',IH:'#e11d48',CV:'#16a34a',FS:'#0891b2' };
+const barColors  = ['#2563eb','#059669','#7c3aed','#dc2626','#d97706','#e11d48','#16a34a','#0891b2'];
 
 function badgeClass(e) {
   return {IM:'b-im',Teaser:'b-teaser','Pre-Teaser':'b-pre','Due Diligence':'b-dd',Seguimiento:'b-seg'}[e] || 'b-other';
@@ -213,7 +213,7 @@ function renderDashboard(data) {
         </div>
         <div class="filter-row" id="member-filters">
           <span style="font-size:11px;color:#bbb;line-height:26px;margin-right:2px;">Persona</span>
-          ${['LV','OM','LG','CL','HS','IH','CV'].map(m =>
+          ${['LV','OM','LG','CL','HS','IH','CV','FS'].map(m =>
             `<button class="filter-btn member-btn" data-member="${m}" onclick="toggleMember('${m}')" style="display:flex;align-items:center;gap:5px;">
               <span style="width:8px;height:8px;border-radius:50%;background:${teamColors[m]};display:inline-block;"></span>${m}
             </button>`
@@ -228,12 +228,12 @@ function renderDashboard(data) {
       <table class="heat-table">
         <thead><tr>
           <th style="text-align:left">Colaborador</th>
-          ${weekLabels.slice(0,8).map(l=>`<th>${l}</th>`).join('')}
+          ${weekLabels.map(l=>`<th>${l}</th>`).join('')}
           <th>Avg 3s</th><th>Avg 9s</th>
         </tr></thead>
         <tbody>${cargaRows.map(d=>`<tr>
           <td>${d.name}</td>
-          ${d.weeks.slice(0,8).map(v=>`<td class="${v===0?'h0':v<=6?'h1':v<=12?'h2':'h3'}">${v}</td>`).join('')}
+          ${d.weeks.map(v=>`<td class="${v===0?'h0':v<=6?'h1':v<=12?'h2':'h3'}">${v}</td>`).join('')}
           <td style="font-weight:600">${d.avg3}</td>
           <td style="color:#aaa">${d.avg9}</td>
         </tr>`).join('')}</tbody>
@@ -352,7 +352,7 @@ function parseLiveData(rows) {
     { marker:'GROWTH',              section:'Growth Gestora' },
     { marker:'RELACIÓN',            section:'Rel. Inversores' },
   ];
-  const colMap = { 5:'LV',6:'OM',7:'LG',8:'CL',9:'HS',10:'IH',11:'CV' };
+  const colMap = { 5:'LV',6:'OM',7:'LG',8:'CL',9:'HS',10:'IH',11:'CV',12:'FS' };
   let currentSection = '';
   const projects = [];
   let headerFound = false;
@@ -379,7 +379,7 @@ function parseLiveData(rows) {
       for (let j=3;j<Math.min(r.length,12);j++) if(r[j]&&!isNaN(r[j])&&Number(r[j])>0) wl.push(Number(r[j]));
       if (wl.length>=3) {
         weekLabels = wl.map((_,idx)=>`S${idx+1}`);
-        const collabs = ['LV','OM','LG','CL','HS','IH','CV'];
+        const collabs = ['LV','OM','LG','CL','HS','IH','CV','FS'];
         for (let k=i+1;k<=i+9&&k<rows.length;k++) {
           const cr=rows[k], nm=String(cr[2]||cr[1]||'').trim();
           if (collabs.includes(nm)) {
@@ -406,57 +406,59 @@ const STATIC_DATA = {
     // Empoderar
     { name:'CIP', desc:'Proveedor de formación profesional subvencionada en Canarias', etapa:'IM', section:'Empoderar', equipo:['LV','CL','IH'] },
     { name:'La Factoría', desc:'Gestor de vivienda pública', etapa:'IM', section:'Empoderar', equipo:['OM','LG','IH'] },
-    { name:'Robotix', desc:'Distribuidor de hardware y software a colegios para robótica y programación', etapa:'IM', section:'Empoderar', equipo:['LV','HS','CV'] },
+    { name:'Robotix', desc:'Distribuidor de hardware y software a colegios para impartir robótica y programación', etapa:'IM', section:'Empoderar', equipo:['LV','HS','CV'] },
     // Cuidar
     { name:'Ailin Health', desc:'Infraestructura para la detección precoz de enfermedades crónicas', etapa:'Pre-Teaser', section:'Cuidar', equipo:['OM','LG','CV'] },
-    { name:'Remolonas', desc:'Plataforma que conecta al agricultor con el consumidor final', etapa:'Pre-Teaser', section:'Cuidar', equipo:['CL','IH','CV'] },
     { name:'Lura Care', desc:'Proveedor de servicios de odontología a aquellos que no tienen acceso', etapa:'Teaser', section:'Cuidar', equipo:['LG','CV'] },
     { name:'Marsi Bionics', desc:'Neuro-rehabilitación para niños y adolescentes', etapa:'Pre-Teaser', section:'Cuidar', equipo:['OM','LG','IH'] },
     { name:'Les Opticiens Mobiles', desc:'Proveedor de servicios de óptica a aquellos que no tienen acceso', etapa:'Pre-Teaser', section:'Cuidar', equipo:['LG','HS'] },
     // Regenerar
-    { name:'Joinup (NEW)', desc:'Plataforma de movilidad sostenible corporativa', etapa:'Pre-Teaser', section:'Regenerar', equipo:['HS'] },
+    { name:'Joinup (NEW)', desc:'Plataforma de movilidad sostenible corporativa', etapa:'Pre-Teaser', section:'Regenerar', equipo:['LG','HS'] },
     { name:'Widhoc', desc:'Sensores agrícolas para optimizar el riego en cultivos', etapa:'Pre-Teaser', section:'Regenerar', equipo:['CL','IH'] },
-    { name:'Waterchallenge', desc:'Tecnología ASEC para tratar fluidos industriales contaminados', etapa:'Pre-Teaser', section:'Regenerar', equipo:['LV','CL','CV'] },
+    { name:'Waterchallenge', desc:'Tecnología ASEC para tratar fluidos industriales contaminados, convertido en agua purificada y sólidos valorizables', etapa:'Pre-Teaser', section:'Regenerar', equipo:['LV','CL','CV'] },
     { name:'Agerpix', desc:'Sensores agrícolas para optimizar producción', etapa:'Pre-Teaser', section:'Regenerar', equipo:['LG','IH'] },
     { name:'Solfy', desc:'Fotovoltaico residencial', etapa:'Pre-Teaser', section:'Regenerar', equipo:['LV','CV'] },
+    { name:'Grupo Calantha', desc:'Gestor de residuo industrial no peligroso', etapa:'Pre-Teaser', section:'Regenerar', equipo:['LG','HS'] },
     // Cartera
     { name:'Ironhack', desc:'Seguimiento quincenal del proceso de M&A y de la situación de caja', etapa:'Seguimiento', section:'Cartera', equipo:['LV','HS'] },
     { name:'Mitiga', desc:'Búsqueda de coinversores que ayuden a mejorar la posición del ticket de Creas', etapa:'Extraordinario', section:'Cartera', equipo:['OM','HS'] },
     { name:'Senior Market', desc:'En proceso de levantar una ronda interna liderada por Creas', etapa:'Follow-on', section:'Cartera', equipo:['LG'] },
     { name:'Goal Systems', desc:'Terminando el Plan de Impacto con la nueva herramienta desarrollada', etapa:'Seguimiento', section:'Cartera', equipo:['LV','HS'] },
-    { name:'Lillian Care', desc:'Seguimiento activo', etapa:'Seguimiento', section:'Cartera', equipo:['LV','LG','IH'] },
+    { name:'Lillian Care', desc:'Seguimiento de compañía en periodo de inestabilidad', etapa:'Seguimiento', section:'Cartera', equipo:['LV','LG','IH'] },
+    { name:'Desconecta', desc:'', etapa:'Seguimiento', section:'Cartera', equipo:['OM','CL'] },
     // Originación
-    { name:'Network M&A / Fondos', desc:'Contactos M&A y fondos (BDO, EY, Arcano, Alantra, PwC…)', etapa:'Planificación', section:'Originación', equipo:['OM','LG'] },
-    { name:'Monitoring Baker Tilly', desc:'Dealflow y contactos traídos por Baker Tilly (healthcare)', etapa:'Planificación', section:'Originación', equipo:['LG'] },
-    { name:'Monitoring Avangard', desc:'Dealflow y contactos traídos por Avanguard (alimentación)', etapa:'Planificación', section:'Originación', equipo:['IH'] },
+    { name:'Network M&A / Fondos', desc:'Contactos M&A (BDO, EY, JB, ING, Singular, Arcano, Albia, Interpath, KPMG, Alantra, PwC, Deloitte, Caixa, ) - Fondos (Miura, Unigrains, Queka, Raise Impact, Stellum, otros?)', etapa:'Planificación', section:'Originación', equipo:['OM','LG'] },
+    { name:'Monitoring Baker Tilly (healthcare)', desc:'Dealflow y contactos traídos por Baker Tilly', etapa:'Planificación', section:'Originación', equipo:['LG'] },
+    { name:'Monitoring Avangard (alimentación)', desc:'Dealflow y contactos traídos por Avanguard', etapa:'Planificación', section:'Originación', equipo:['IH'] },
     { name:'Calendario eventos 2026', desc:'Recopilación y monitoring de eventos', etapa:'Planificación', section:'Originación', equipo:['CV'] },
-    { name:'Análisis sectoriales', desc:'Salud mental', etapa:'En curso', section:'Originación', equipo:['IH'] },
+    { name:'Análisis sectoriales (salud mental)', desc:'Revisión interna', etapa:'En curso', section:'Originación', equipo:['IH'] },
     // Com. & Eventos
     { name:'Proyecto página web', desc:'Desarrollo de la nueva página web de Creas', etapa:'En curso', section:'Com. & Eventos', equipo:['CV'] },
     { name:'Newsletter', desc:'Desarrollo de la newsletter de Creas', etapa:'En curso', section:'Com. & Eventos', equipo:['CV'] },
     // Impacto
-    { name:'Auditoría Miresi & Zen Educate', desc:'Auditoría de impacto', etapa:'En curso', section:'Impacto', equipo:['CL','IH'] },
+    { name:'Auditoría Miresi & Zen Educate', desc:'Auditoría con Sinnple', etapa:'En curso', section:'Impacto', equipo:['CL','IH'] },
     { name:'Informe de impacto', desc:'Construcción del informe 2025', etapa:'En curso', section:'Impacto', equipo:['HS','IH','CV'] },
     { name:'Impacto sistémico', desc:'Construcción de la visión sistémica', etapa:'En curso', section:'Impacto', equipo:['IH'] },
     // People
     { name:'Nuevas contrataciones (Dafna/Caroline)', desc:'Onboarding de Dafna', etapa:'En curso', section:'People', equipo:['LG','HS','IH','CV'] },
     // Interno
-    { name:'Revisión regulatoria / Compliance', desc:'', etapa:'En curso', section:'Interno', equipo:['OM'] },
+    { name:'Revisión regulatoria / Compliance', desc:'Revisión con Francesc', etapa:'En curso', section:'Interno', equipo:['OM','FS'] },
     // Growth Gestora
-    { name:'Fondo Educación (Bankinter)', desc:'Reunión con Bankinter para presentar el fondo de educación', etapa:'Planificación', section:'Growth Gestora', equipo:['LV','HS','CV'] },
+    { name:'Fondo Educación (Bankinter)', desc:'Reunión con Bankinter par apresentar el fondo de educación', etapa:'Planificación', section:'Growth Gestora', equipo:['LV','HS','CV'] },
     // Rel. Inversores
     { name:'NextGen (17/09)', desc:'Enviar emails al listado de invitados', etapa:'Planificación', section:'Rel. Inversores', equipo:['LV','OM','CV'] },
   ],
   cargaRows: [
-    { name:'LV', weeks:[11,11,8,2,2,2,2,2,0], avg3:10, avg9:5 },
-    { name:'OM', weeks:[10,10,4,3,3,3,3,3,0], avg3:8,  avg9:4 },
-    { name:'LG', weeks:[15,13,4,2,2,2,2,2,0], avg3:11, avg9:5 },
-    { name:'CL', weeks:[7,7,6,2,2,0,0,0,0],   avg3:7,  avg9:3 },
-    { name:'HS', weeks:[11,11,9,6,4,4,4,4,0], avg3:10, avg9:6 },
-    { name:'IH', weeks:[18,18,11,7,5,1,1,1,0],avg3:16, avg9:7 },
-    { name:'CV', weeks:[16,16,9,4,2,2,2,2,0], avg3:14, avg9:6 },
+    { name:'LV', weeks:[11, 11, 8, 2, 2, 2, 2, 2, 0], avg3:10, avg9:5 },
+    { name:'OM', weeks:[13, 13, 7, 6, 6, 6, 6, 6, 0], avg3:11, avg9:7 },
+    { name:'LG', weeks:[16, 14, 5, 2, 2, 2, 2, 2, 0], avg3:12, avg9:5 },
+    { name:'CL', weeks:[9, 9, 9, 5, 5, 3, 3, 3, 0], avg3:9, avg9:5.1 },
+    { name:'HS', weeks:[12, 12, 9, 6, 4, 4, 4, 4, 0], avg3:11, avg9:6.1 },
+    { name:'IH', weeks:[17, 17, 11, 7, 5, 1, 1, 1, 0], avg3:15, avg9:6.7 },
+    { name:'CV', weeks:[15, 15, 9, 4, 2, 2, 2, 2, 0], avg3:13, avg9:5.7 },
+    { name:'FS', weeks:[2, 2, 0, 0, 0, 0, 0, 0, 0], avg3:1, avg9:0.4 },
   ],
-  weeklyTotal: [88,86,51,26,20,14,14,14,0],
+  weeklyTotal: [95, 93, 58, 32, 26, 20, 20, 20, 0],
   weekLabels:  ['S1','S2','S3','S4','S5','S6','S7','S8','S9'],
 };
 
