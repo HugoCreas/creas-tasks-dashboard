@@ -110,10 +110,8 @@ let _allProjects = [];
 
 // ── Auth ──────────────────────────────────────────────────────────────────
 function getTokenFromHash() {
-  console.log('Hash:', window.location.hash);
   const params = new URLSearchParams(window.location.hash.substring(1));
   const t = params.get('access_token');
-  console.log('Token found:', !!t);
   if (t) { accessToken = t; window.history.replaceState({}, '', window.location.pathname); return true; }
   return false;
 }
@@ -337,9 +335,7 @@ async function loadData() {
   if (!accessToken) { showAuth(); return; }
   try {
     const rows = await fetchSheetData();
-    console.log('[DIAG] filas recibidas de Graph:', rows.length, rows);
     const data = parseLiveData(rows);
-    console.log('[DIAG] cargaRows:', data.cargaRows.length, 'weeklyTotal:', data.weeklyTotal, 'weekLabels:', data.weekLabels);
     renderDashboard(data);
     document.getElementById('last-update').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
   } catch(e) {
