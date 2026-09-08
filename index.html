@@ -146,8 +146,8 @@ function parseData(rows) {
 }
 
 // ── Render ────────────────────────────────────────────────────────────────
-const teamColors = { LV:'#2563eb',OM:'#059669',LG:'#7c3aed',CL:'#dc2626',HS:'#d97706',IH:'#e11d48',CV:'#16a34a',FS:'#0891b2' };
-const barColors  = ['#2563eb','#059669','#7c3aed','#dc2626','#d97706','#e11d48','#16a34a','#0891b2'];
+const teamColors = { LV:'#2563eb',OM:'#059669',LG:'#7c3aed',CL:'#dc2626',HS:'#d97706',IH:'#e11d48',CV:'#16a34a',FS:'#0891b2',ME:'#6b7280' };
+const barColors  = ['#2563eb','#059669','#7c3aed','#dc2626','#d97706','#e11d48','#16a34a','#0891b2','#6b7280'];
 
 function badgeClass(e) {
   return {IM:'b-im',Teaser:'b-teaser','Pre-Teaser':'b-pre','Due Diligence':'b-dd',Seguimiento:'b-seg'}[e] || 'b-other';
@@ -211,7 +211,7 @@ function renderDashboard(data) {
         </div>
         <div class="filter-row" id="member-filters">
           <span style="font-size:11px;color:#bbb;line-height:26px;margin-right:2px;">Persona</span>
-          ${['LV','OM','LG','CL','HS','IH','CV','FS'].map(m =>
+          ${['LV','OM','LG','CL','HS','IH','CV','FS','ME'].map(m =>
             `<button class="filter-btn member-btn" data-member="${m}" onclick="toggleMember('${m}')" style="display:flex;align-items:center;gap:5px;">
               <span style="width:8px;height:8px;border-radius:50%;background:${teamColors[m]};display:inline-block;"></span>${m}
             </button>`
@@ -387,7 +387,7 @@ function parseLiveData(rows) {
           desc: find('Descripción / Tarea'),
           estado: find('Estado'),
           etapa: find('Etapa actual'),
-          team: { LV:find('LV'),OM:find('OM'),LG:find('LG'),CL:find('CL'),HS:find('HS'),IH:find('IH'),CV:find('CV'),FS:find('FS') }
+          team: { LV:find('LV'),OM:find('OM'),LG:find('LG'),CL:find('CL'),HS:find('HS'),IH:find('IH'),CV:find('CV'),FS:find('FS'),ME:find('ME') }
         };
         headerFound = true;
       }
@@ -408,7 +408,7 @@ function parseLiveData(rows) {
   // Parse carga — busca las filas de colaboradores directamente (robusto ante
   // fechas que Graph puede devolver como texto en lugar de número serie)
   let cargaRows = [], weeklyTotal = [], weekLabels = [];
-  const collabs = ['LV','OM','LG','CL','HS','IH','CV','FS'];
+  const collabs = ['LV','OM','LG','CL','HS','IH','CV','FS','ME'];
   // El nombre del colaborador puede estar en col 1, 2 o 3 según el offset del rango
   const nameOf = r => {
     for (const idx of [3,2,1,0]) {
@@ -503,6 +503,7 @@ const STATIC_DATA = {
     { name:'IH', weeks:[17, 17, 11, 7, 5, 1, 1, 1, 0], avg3:15, avg9:6.7 },
     { name:'CV', weeks:[15, 15, 9, 4, 2, 2, 2, 2, 0], avg3:13, avg9:5.7 },
     { name:'FS', weeks:[2, 2, 0, 0, 0, 0, 0, 0, 0], avg3:1, avg9:0.4 },
+    { name:'ME', weeks:[0, 0, 0, 0, 0, 0, 0, 0, 0], avg3:0, avg9:0 },
   ],
   weeklyTotal: [95, 93, 58, 32, 26, 20, 20, 20, 0],
   weekLabels:  ['S1','S2','S3','S4','S5','S6','S7','S8','S9'],
