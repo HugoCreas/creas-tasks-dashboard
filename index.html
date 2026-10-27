@@ -146,8 +146,14 @@ function parseData(rows) {
 }
 
 // ── Render ────────────────────────────────────────────────────────────────
-const teamColors = { LV:'#2563eb',OM:'#059669',LG:'#7c3aed',CL:'#dc2626',HS:'#d97706',IH:'#e11d48',CV:'#16a34a',FS:'#0891b2',ME:'#6b7280' };
-const barColors  = ['#2563eb','#059669','#7c3aed','#dc2626','#d97706','#e11d48','#16a34a','#0891b2','#6b7280'];
+// Equipo: se rellena desde la cabecera del Excel (columnas entre "Peso" y "Fecha inicio"); este valor es el fallback
+const TEAM = ['LV','OM','LG','CL','HS','IH','CV','CLe','ME'];
+const teamColors = { LV:'#2563eb',OM:'#059669',LG:'#7c3aed',CL:'#dc2626',HS:'#d97706',IH:'#e11d48',CV:'#16a34a',CLe:'#0891b2',ME:'#6b7280' };
+const EXTRA_COLORS = ['#0d9488','#9333ea','#ea580c','#4f46e5','#be185d','#65a30d'];
+function registerTeam(names) {
+  TEAM.splice(0, TEAM.length, ...names);
+  names.forEach(n => { if (!teamColors[n]) teamColors[n] = EXTRA_COLORS[Object.keys(teamColors).length % EXTRA_COLORS.length]; });
+}
 
 function badgeClass(e) {
   return {IM:'b-im',Teaser:'b-teaser','Pre-Teaser':'b-pre','Due Diligence':'b-dd',Seguimiento:'b-seg'}[e] || 'b-other';
@@ -155,6 +161,7 @@ function badgeClass(e) {
 
 // Section display config
 const SECT_CONFIG = {
+  'Rituales':     { color:'#ede9fe', text:'#5b21b6', parent:'Rituales' },
   'Empoderar':    { color:'#dbeafe', text:'#1e40af', parent:'Inversión' },
   'Cuidar':       { color:'#fce7f3', text:'#9d174d', parent:'Inversión' },
   'Regenerar':    { color:'#d1fae5', text:'#065f46', parent:'Inversión' },
@@ -178,7 +185,7 @@ function renderDashboard(data) {
 
   document.getElementById('main-content').innerHTML = `
     <div class="metrics">
-      <div class="metric"><div class="metric-label">Proyectos activos</div><div class="metric-value">${projects.length}</div><div class="metric-sub">en todas las categorías</div></div>
+      <div class="metric"><div class="metric-label">Proyectos activos</div><div class="metric-value">${projects.filter(p => p.section !== 'Rituales').length}</div><div class="metric-sub">en todas las categorías</div></div>
       <div class="metric"><div class="metric-label">Carga total equipo</div><div class="metric-value">${total}</div><div class="metric-sub">semana actual</div></div>
       <div class="metric"><div class="metric-label">Más cargado</div><div class="metric-value">${maxP.name}</div><div class="metric-sub">${maxP.weeks[0]} pts esta semana</div></div>
       <div class="metric"><div class="metric-label">Promedio equipo 3s</div><div class="metric-value">${avg3}</div><div class="metric-sub">por colaborador</div></div>
@@ -190,7 +197,7 @@ function renderDashboard(data) {
         ${cargaRows.map((d,i) => `
           <div class="carga-row">
             <span class="carga-name">${d.name}</span>
-            <div class="carga-track"><div class="carga-fill" style="width:${Math.round(d.weeks[0]/maxC*100)}%;background:${barColors[i]};"></div></div>
+            <div class="carga-track"><div class="carga-fill" style="width:${Math.round(d.weeks[0]/maxC*100)}%;background:${teamColors[d.name]||'#6b7280'};"></div></div>
             <span class="carga-num">${d.weeks[0]}</span>
             <span class="carga-avg">avg ${d.avg3}</span>
           </div>`).join('')}
@@ -205,13 +212,13 @@ function renderDashboard(data) {
       <div class="panel-title">Proyectos activos</div>
       <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
         <div class="filter-row" id="cat-filters">
-          ${['Todos','Inversión','Cartera','Transversal'].map(c =>
+          ${['Todos','Rituales','Inversión','Cartera','Transversal'].map(c =>
             `<button class="filter-btn${currentCat===c?' active':''}" onclick="setCat('${c}')">${c}</button>`
           ).join('')}
         </div>
         <div class="filter-row" id="member-filters">
           <span style="font-size:11px;color:#bbb;line-height:26px;margin-right:2px;">Persona</span>
-          ${['LV','OM','LG','CL','HS','IH','CV','FS','ME'].map(m =>
+          ${TEAM.map(m =>
             `<button class="filter-btn member-btn" data-member="${m}" onclick="toggleMember('${m}')" style="display:flex;align-items:center;gap:5px;">
               <span style="width:8px;height:8px;border-radius:50%;background:${teamColors[m]};display:inline-block;"></span>${m}
             </button>`
@@ -275,7 +282,7 @@ function drawEvoChart(weekLabels, weeklyTotal, attempt = 0) {
 }
 
 function renderProjects() {
-  const catMap = { 'Inversión':['Empoderar','Cuidar','Regenerar'], 'Cartera':['Cartera'],
+  const catMap = { 'Rituales':['Rituales'], 'Inversión':['Empoderar','Cuidar','Regenerar'], 'Cartera':['Cartera'],
     'Transversal':['Originación','Com. & Eventos','Impacto','People','Interno','Growth Gestora','Rel. Inversores'] };
 
   const sectionsToShow = currentCat === 'Todos'
@@ -298,7 +305,7 @@ function renderProjects() {
       <table><tbody>
         ${projs.map(p => `<tr>
           <td class="col-n">${p.name}</td>
-          <td class="col-e"><span class="badge ${badgeClass(p.etapa)}">${p.etapa}</span></td>
+          <td class="col-e">${p.etapa ? `<span class="badge ${badgeClass(p.etapa)}">${p.etapa}</span>` : ''}</td>
           <td class="col-d">${p.desc.length>70?p.desc.slice(0,70)+'…':p.desc}</td>
           <td class="col-t">${p.equipo.map(m=>{
             const active = !selectedMember || m===selectedMember;
@@ -359,6 +366,7 @@ function showAuth() {
 function parseLiveData(rows) {
   // Section markers in order as they appear in Excel
   const SECT_MAP = [
+    { marker:'Rituales',            section:'Rituales' },
     { marker:'Empoderar',           section:'Empoderar' },
     { marker:'Cuidar',              section:'Cuidar' },
     { marker:'Regenerar',           section:'Regenerar' },
@@ -387,8 +395,13 @@ function parseLiveData(rows) {
           desc: find('Descripción / Tarea'),
           estado: find('Estado'),
           etapa: find('Etapa actual'),
-          team: { LV:find('LV'),OM:find('OM'),LG:find('LG'),CL:find('CL'),HS:find('HS'),IH:find('IH'),CV:find('CV'),FS:find('FS'),ME:find('ME') }
+          team: {}
         };
+        // Equipo = columnas entre "Peso" y "Fecha inicio"
+        const pi = find('Peso'), fi = find('Fecha inicio');
+        const names = [];
+        for (let j = pi + 1; j < fi; j++) { const n = String(row[j]||'').trim(); if (n) { names.push(n); col.team[n] = j; } }
+        if (names.length) registerTeam(names);
         headerFound = true;
       }
       continue;
@@ -396,23 +409,24 @@ function parseLiveData(rows) {
     const r0 = String(row[col.name]||'').trim();
     const sect = SECT_MAP.find(s => r0.startsWith(s.marker));
     if (sect) { currentSection = sect.section; continue; }
-    if (String(row[col.estado]||'') === 'Activo' && row[col.etapa]) {
+    if (String(row[col.estado]||'') === 'Activo' && (row[col.etapa] || currentSection === 'Rituales')) {
       const equipo = [];
       for (const [name,ci] of Object.entries(col.team)) if (ci!==-1 && row[ci] && row[ci]!=0) equipo.push(name);
       let desc = String(row[col.desc]||'').trim();
       if (desc === 'n.a.') desc = '';
-      projects.push({ name:r0, desc, estado:'Activo', etapa:String(row[col.etapa]), section:currentSection, equipo });
+      projects.push({ name:r0, desc, estado:'Activo', etapa:String(row[col.etapa]||''), section:currentSection, equipo });
     }
   }
 
   // Parse carga — busca las filas de colaboradores directamente (robusto ante
   // fechas que Graph puede devolver como texto en lugar de número serie)
   let cargaRows = [], weeklyTotal = [], weekLabels = [];
-  const collabs = ['LV','OM','LG','CL','HS','IH','CV','FS','ME'];
+  const collabs = TEAM;
+  const canon = v => TEAM.find(t => t.toLowerCase() === v.toLowerCase()) || v; // "Cle" en la tabla de carga = "CLe" en la cabecera
   // El nombre del colaborador puede estar en col 1, 2 o 3 según el offset del rango
   const nameOf = r => {
     for (const idx of [3,2,1,0]) {
-      const v = String(r[idx]||'').trim();
+      const v = canon(String(r[idx]||'').trim());
       if (collabs.includes(v) || v.toLowerCase().includes('total')) return { v, idx };
     }
     return { v:'', idx:-1 };
@@ -449,6 +463,10 @@ function parseLiveData(rows) {
 // ── Static data (verified from Excel) ────────────────────────────────────
 const STATIC_DATA = {
   projects: [
+    // Rituales
+    { name:'Pido / Doy', desc:'Petición individual de ayuda para la semana', etapa:'', section:'Rituales', equipo:[] },
+    { name:'Historias personales del propósito', desc:'Anécdotas personales ocurridas en la última semana', etapa:'', section:'Rituales', equipo:[] },
+    { name:'Aprendizaje de la semana', desc:'"Lo intenté pero no lo conseguí, esto es lo que aprendí"', etapa:'', section:'Rituales', equipo:[] },
     // Empoderar
     { name:'CIP', desc:'Proveedor de formación profesional subvencionada en Canarias', etapa:'IM', section:'Empoderar', equipo:['LV','CL','IH'] },
     { name:'La Factoría', desc:'Gestor de vivienda pública', etapa:'IM', section:'Empoderar', equipo:['OM','LG','IH'] },
@@ -488,24 +506,24 @@ const STATIC_DATA = {
     // People
     { name:'Nuevas contrataciones (Dafna/Caroline)', desc:'Onboarding de Dafna', etapa:'En curso', section:'People', equipo:['LG','HS','IH','CV'] },
     // Interno
-    { name:'Revisión regulatoria / Compliance', desc:'Revisión con Francesc', etapa:'En curso', section:'Interno', equipo:['OM','FS'] },
+    { name:'Revisión regulatoria / Compliance', desc:'Revisión con Francesc', etapa:'En curso', section:'Interno', equipo:['OM','ME'] },
     // Growth Gestora
     { name:'Fondo Educación (Bankinter)', desc:'Reunión con Bankinter par apresentar el fondo de educación', etapa:'Planificación', section:'Growth Gestora', equipo:['LV','HS','CV'] },
     // Rel. Inversores
     { name:'NextGen (17/09)', desc:'Enviar emails al listado de invitados', etapa:'Planificación', section:'Rel. Inversores', equipo:['LV','OM','CV'] },
   ],
   cargaRows: [
-    { name:'LV', weeks:[11, 11, 8, 2, 2, 2, 2, 2, 0], avg3:10, avg9:5 },
-    { name:'OM', weeks:[13, 13, 7, 6, 6, 6, 6, 6, 0], avg3:11, avg9:7 },
-    { name:'LG', weeks:[16, 14, 5, 2, 2, 2, 2, 2, 0], avg3:12, avg9:5 },
-    { name:'CL', weeks:[9, 9, 9, 5, 5, 3, 3, 3, 0], avg3:9, avg9:5.1 },
-    { name:'HS', weeks:[12, 12, 9, 6, 4, 4, 4, 4, 0], avg3:11, avg9:6.1 },
-    { name:'IH', weeks:[17, 17, 11, 7, 5, 1, 1, 1, 0], avg3:15, avg9:6.7 },
-    { name:'CV', weeks:[15, 15, 9, 4, 2, 2, 2, 2, 0], avg3:13, avg9:5.7 },
-    { name:'FS', weeks:[2, 2, 0, 0, 0, 0, 0, 0, 0], avg3:1, avg9:0.4 },
-    { name:'ME', weeks:[0, 0, 0, 0, 0, 0, 0, 0, 0], avg3:0, avg9:0 },
+    { name:'LV', weeks:[15, 14, 12, 8, 8, 8, 4, 3, 3], avg3:14, avg9:8.9 },
+    { name:'OM', weeks:[12, 12, 11, 11, 11, 10, 7, 6, 6], avg3:12, avg9:9.6 },
+    { name:'LG', weeks:[7, 6, 5, 5, 5, 4, 2, 1, 1], avg3:6, avg9:4 },
+    { name:'CL', weeks:[8, 8, 6, 6, 6, 6, 5, 4, 4], avg3:7, avg9:5.9 },
+    { name:'HS', weeks:[14, 12, 8, 8, 8, 8, 4, 4, 4], avg3:11, avg9:7.8 },
+    { name:'IH', weeks:[14, 13, 10, 10, 10, 9, 9, 8, 8], avg3:12, avg9:10.1 },
+    { name:'CV', weeks:[16, 13, 9, 7, 7, 7, 6, 5, 5], avg3:13, avg9:8.3 },
+    { name:'CLe', weeks:[4, 3, 3, 3, 3, 3, 0, 0, 0], avg3:3, avg9:2.1 },
+    { name:'ME', weeks:[29, 28, 28, 16, 16, 16, 8, 8, 8], avg3:28, avg9:17.4 },
   ],
-  weeklyTotal: [95, 93, 58, 32, 26, 20, 20, 20, 0],
+  weeklyTotal: [119, 109, 92, 74, 74, 71, 45, 39, 39],
   weekLabels:  ['S1','S2','S3','S4','S5','S6','S7','S8','S9'],
 };
 
