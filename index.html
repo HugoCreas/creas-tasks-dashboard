@@ -141,6 +141,7 @@ let evoChart = null;
 let currentCat = 'Todos';
 let selectedMember = null;
 let _allProjects = [];
+let _dataMeta = { live: false, tierCol: false }; // origen de los datos mostrados (para avisos)
 
 // ── Auth ──────────────────────────────────────────────────────────────────
 function getTokenFromHash() {
@@ -218,6 +219,7 @@ const SECT_CONFIG = {
 function renderDashboard(data) {
   const { projects, cargaRows, weeklyTotal, weekLabels } = data;
   _allProjects = projects;
+  _dataMeta = { live: !!data.live, tierCol: !!data.tierCol };
   const maxC = Math.max(...cargaRows.map(r => r.weeks[0]), 1);
   const total = cargaRows.reduce((a,b) => a + b.weeks[0], 0);
   const maxP = cargaRows.reduce((a,b) => b.weeks[0]>a.weeks[0]?b:a, cargaRows[0]);
@@ -298,6 +300,8 @@ function renderPriorities() {
   if (!el) return;
   const projs = _allProjects.filter(p => p.section !== 'Rituales');
   const untiered = projs.filter(p => !p.tier).length;
+  const notice = !_dataMeta.live ? 'Mostrando datos de respaldo (no se ha podido leer el Excel): los tiers no se actualizan.'
+    : !_dataMeta.tierCol ? 'No se encuentra la columna "Tiering" en la cabecera del Excel (fila de "Proyecto").' : '';
 
   const col = t => {
     const list = projs.filter(p => p.tier === t);
@@ -337,6 +341,7 @@ function renderPriorities() {
         <div class="pp-legend">${[1,2,3].map(t => `<span><i style="background:${TIER_COLORS[t]}"></i>Tier ${t}</span>`).join('')}</div>
       </div>
     </div>
+    ${notice ? `<div class="prio-foot" style="color:#b45309">⚠ ${notice}</div>` : ''}
     ${untiered ? `<div class="prio-foot">${untiered} proyecto${untiered===1?'':'s'} activo${untiered===1?'':'s'} sin tier asignado en el Excel.</div>` : ''}`;
 }
 
@@ -552,7 +557,7 @@ function parseLiveData(rows) {
     weeklyTotal = cargaRows[0].weeks.map((_,j)=>cargaRows.reduce((a,r)=>a+(r.weeks[j]||0),0));
   }
   if (!cargaRows.length) return STATIC_DATA;
-  return { projects: projects.length ? projects : STATIC_DATA.projects, cargaRows, weeklyTotal, weekLabels };
+  return { projects: projects.length ? projects : STATIC_DATA.projects, cargaRows, weeklyTotal, weekLabels, live: true, tierCol: !!col && col.tier !== -1 };
 }
 
 // ── Static data (copia del Excel a 2026-11-03) ────────────────────────────────────
