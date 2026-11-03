@@ -195,7 +195,7 @@ function badgeClass(e) {
 
 // ── Tiering (prioridad 1/2/3 desde la columna "Tiering" del Excel) ─────────
 const TIER_COLORS = { 1:'#5a7a3a', 2:'#a9c08e', 3:'#d6d6d2' };
-function parseTier(v) { const m = String(v ?? '').trim().match(/^T?s*([123])/i); return m ? parseInt(m[1], 10) : null; } // acepta 1/2/3 o T1/T2/T3
+function parseTier(v) { const m = String(v ?? '').trim().match(/^T?\s*([123])$/i); return m ? parseInt(m[1], 10) : null; } // acepta 1/2/3 o T1/T2/T3
 function tierBadge(t) { return t ? `<span class="tier tier-${t}" title="Prioridad ${t}">T${t}</span>` : `<span class="tier tier-0" title="Sin prioridad asignada">–</span>`; }
 const byTier = (a, b) => (a.tier || 9) - (b.tier || 9);
 
